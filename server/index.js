@@ -6,9 +6,9 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 
 const router = require('./routes/index');
-const errorHandler = require('./middleware/ErrorHandlingMiddleware');
+const errorHandler = require('./middleware/errorHandlingMiddleware');
 
-const PORT = process.env.PORT ?? 7000;
+const PORT = process.env.PORT ?? 7001;
 
 const app = express();
 app.use(cors());

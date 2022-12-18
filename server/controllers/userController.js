@@ -1,14 +1,14 @@
 const bcrypt = require('bcrypt');
 const {validationResult} = require('express-validator');
 const jwt = require('jsonwebtoken');
-const User = require('../models/models');
+const User = require('../models/userModels');
 const ApiError = require('../error/apiError');
 
 const generateJWT = function(id, login, role) {
     return jwt.sign(
         {id: id, login: login, role: role},
         process.env.SECRET_KEY,
-        {expiresIn: '24h'},
+        {expiresIn: '12h'},
     );
 };
 
