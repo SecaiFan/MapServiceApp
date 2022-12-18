@@ -26,3 +26,5 @@ router.post('/login',
     userController.login);
 router.get('/greet',cookieMiddleware, userController.greetingUser);
 router.get('/logout',cookieMiddleware, userController.logout);
+
+module.exports = router;
