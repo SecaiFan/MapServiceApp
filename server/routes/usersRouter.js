@@ -25,6 +25,11 @@ router.post('/login',
         .escape(),
     userController.login);
 router.get('/greet',cookieMiddleware, userController.greetingUser);
-router.get('/logout',cookieMiddleware, userController.logout);
+router.post('/logout',cookieMiddleware, userController.logout);
+router.get('/activate');
+router.post('/activate');
+router.get('/activate/:link', userController.activate);
+router.get('/refresh', userController.tokenRefresh);
+
 
 module.exports = router;

@@ -13,5 +13,5 @@ const User = sequelize.define('user', {
 });
 
 User.hasOne(Token)
-
+Token.belongsTo(User);
 module.exports = User;

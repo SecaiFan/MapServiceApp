@@ -1,16 +1,6 @@
-const bcrypt = require('bcrypt');
-const {validationResult} = require('express-validator');
-const jwt = require('jsonwebtoken');
-const User = require('../models/userModels');
-const ApiError = require('../error/apiError');
-
-const generateJWT = function(id, login, role) {
-    return jwt.sign(
-        {id: id, login: login, role: role},
-        process.env.SECRET_KEY,
-        {expiresIn: '12h'},
-    );
-};
+const {validationResult, cookie} = require('express-validator');
+const userService = require('../services/userServise');
+const ApiError = require('../errors/apiError');
 
 class UserController {
     async registration(req, res, next) {
@@ -19,43 +9,17 @@ class UserController {
             if(!errors.isEmpty()) {
                 const fstError = errors.array({ onlyFirstError: true })[0];
                 console.log(fstError);
-                return res.render('registration', {
-                    error: true,
-                    msg: fstError.msg,
-                    layout: false,
+                return res.json({
+                    msg: fstError.msg
                 });
             }
-            console.log(req.body);
-            const {login, password, rep_password, role} = req.body;
+            const {login, email, password, rep_password, role} = req.body;
             if(!login || !password || !rep_password) {
                 return res.status(520).json({message:"Unknown error!"});
             }
-            const candidate = await User.findOne({where: {login: login}});
-            if (candidate) {
-                return res.render('registration', {
-                    userExist: true,
-                    msg: "Пользователь с таким именем уже существует",
-                    layout: false,
-                });
-            }
-            if (password !== rep_password) {
-                return res.render('registration', {
-                    unMatch: true,
-                    msg: "Введённые пароли не совпадают",
-                    layout: false,
-                });
-            }
-            const hashPassword = await bcrypt.hash(password, 5);
-            let user = await User.create({login, role, password: hashPassword});
-            const token = generateJWT(user.id, user.login, user.role);
-            await User.update({token: token}, {where: {
-                login: user.login
-            }});
-            return res.status(303).cookie('token', token, {
-                maxAge: 12*3600,
-                secure: true,
-                httpOnly: true
-            }).redirect('greet');
+            const userData = await userService.registration(login, email, password, rep_password, role);
+            res.cookie('refreshToken', userData.refreshJWT);
+            return res.json(userData);
         } catch(e) {
             console.log(e);
             res.status(500).json({message:"Registration error!"});
@@ -101,7 +65,7 @@ class UserController {
             res.status(500).json({message:"Login error!"});
         }
     }
-    async logout(req, res) {
+    async logout(req, res, next) {
         try {
             const login = req.login;
             await User.update({token: null}, {where: {
@@ -126,6 +90,21 @@ class UserController {
             layout: false,
             user: req.login,
         });
+    }
+    async activate(req, res, next) {
+        try {
+
+        } catch(e) {
+
+        }
+    }
+    async tokenRefresh(req, res, next) {
+        try {
+            res.json(['Something', 'Working']);
+        }
+         catch(e) {
+            console.log(e);
+        }
     }
 }
 
