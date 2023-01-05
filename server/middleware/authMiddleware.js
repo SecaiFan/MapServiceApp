@@ -1,27 +1,27 @@
-//const jwt = require('jsonwebtoken');
-const User = require("../models/userModels");
+const ApiError = require('../errors/apiError');
+const User = require('../models/userModels');
+const tokenService = require('../services/tokenService');
 
 module.exports = function (req, res, next) {
     if(req.method === 'OPTIONS') {
         next();
     }
     try {
-        const token = req.cookies.token;
-        if(!token) {
-            next();
-        } else {
-            const candidate = User.findOne({where: {token: token}});
-            if(candidate) {
-                return res.status(303).cookie('token', token, {
-                    maxAge: 12*3600,
-                    secure: true,
-                    httpOnly: true,
-                }).redirect('greet');
-            } else {
-                next();
-            }
+        const {accessToken} = req.cookies;
+        if(!accessToken) {
+            return next(ApiError.unauthorizedError('Требуется подтверждение аккаунта'));
         }
+        const userData = tokenService.validateAccessToken(accessToken);
+        if(!userData) {
+            return next(ApiError.unauthorizedError('Требуется подтверждение аккаунта'));
+        }
+        const user = User.findOne({where: {login: userData.login}});
+        if(user.isActivated !== true) {
+            return next(ApiError.unauthorizedError('Требуется подтверждение аккаунта'));
+        }
+        req.user = userData;
+        next();
     } catch(e) {
-        return res.status(401).json({message:"Authorization error"});
+        return next(ApiError.unauthorizedError('Требуется подтверждение аккаунта'));
     }
 };

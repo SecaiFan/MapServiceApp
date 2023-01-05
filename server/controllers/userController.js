@@ -7,22 +7,15 @@ class UserController {
         try {
             const errors = validationResult(req);
             if(!errors.isEmpty()) {
-                const fstError = errors.array({ onlyFirstError: true })[0];
-                console.log(fstError);
-                return res.json({
-                    msg: fstError.msg
-                });
+                return next(ApiError.badRequest('Ощибка валидации', errors.array()));
             }
-            const {login, email, password, rep_password, role} = req.body;
-            if(!login || !password || !rep_password) {
-                return res.status(520).json({message:"Unknown error!"});
-            }
-            const userData = await userService.registration(login, email, password, rep_password, role);
-            res.cookie('refreshToken', userData.refreshJWT);
+            const {login, password, rep_password, role} = req.body;
+            const userData = await userService.registration(login, password, rep_password, role);
+            res.cookie('refreshToken', userData.refreshJWT,
+                {maxAge: 30*24*3600*1000, httpOnly: true,});
             return res.json(userData);
         } catch(e) {
-            console.log(e);
-            res.status(500).json({message:"Registration error!"});
+            next(e);
         }
     }
     async login(req, res, next) {
@@ -31,79 +24,67 @@ class UserController {
             if(!errors.isEmpty()) {
                 const fstError = errors.array({ onlyFirstError: true })[0];
                 console.log(fstError);
-                return res.render('login', {
-                    error: true,
+                return res.json({
                     msg: fstError.msg,
-                    layout: false,
                 });
             }
-            const {login, password} = req.body;
+            const {login, password, role} = req.body;
             if(!login || !password) {
                 return next(ApiError.badRequest("Некорректный login или password!"));
             }
-            const user = await User.findOne({where: {login: login}});
-            let comparePassword;
-            if(user) comparePassword = await bcrypt.compare(password, user.password);
-            if (!user || !comparePassword) {
-                return res.render('login', {
-                    userCheck: true,
-                    msg: "Неверный логин или пароль",
-                    layout: false,
-                });
-            }
-            const token = generateJWT(user.id, user.login, user.role);
-            await User.update({token: token}, {where: {
-                    login: user.login
-                }});
-            return res.status(303).cookie('token', token, {
-                maxAge: 12*3600,
-                secure: true,
-                httpOnly: true
-            }).redirect('greet');
+            const userData = await userService.login(login, password, role);
+            res.cookie('refreshToken', userData.refreshJWT,
+                {maxAge: 30*24*3600*1000, httpOnly: true,});
+            return res.json(userData);
         } catch(e) {
-            console.log(e);
-            res.status(500).json({message:"Login error!"});
+            next(e);
         }
     }
     async logout(req, res, next) {
         try {
-            const login = req.login;
-            await User.update({token: null}, {where: {
-                login: login
-            }});
-            res.clearCookie('token');
-            return res.redirect('registration');
+            const {refreshToken} = req.cookies;
+            const token = await userService.logout(refreshToken);
+            res.clearCookie('refreshToken');
+            return res.json(token);
         } catch(e) {
-            console.log(e);
-            res.status(500).json({message:"Logout error!"});
+            next(e);
         }
     }
-    async sendCandidatesData(req, res) {
-        return res.render('registration', {layout: false});
+    async check(req, res, next) {
+        const {id} = req.query;
+        if(!id) return next(ApiError.badRequest('Пользователь не определён'));
+        return res.json(id);
     }
-    async sendUserData(req, res) {
-        res.render('login', {layout: false});
-    }
-    async greetingUser(req, res) {
-        console.log(req.cookies);
-        return res.render('greeting', {
-            layout: false,
-            user: req.login,
-        });
+    async getActivation(req, res, next) {
+        try {
+            const {email} = req.body;
+            const {refreshToken} = req.cookies;
+            const user = await userService.getActivationLink(refreshToken, email);
+            return res.json(user);
+        }
+        catch(e) {
+            next(e);
+        }
     }
     async activate(req, res, next) {
         try {
-
+            const activationlink = req.params.link;
+            await userService.activate(activationlink);
+            return res.redirect(process.env.CLIENT_URL);
         } catch(e) {
-
+            next(e);
         }
     }
     async tokenRefresh(req, res, next) {
         try {
-            res.json(['Something', 'Working']);
+            const {refreshToken} = req.cookies;
+            const userData = await userService.refresh(refreshToken);
+            res.cookie('refreshToken', userData.refreshToken,
+                {maxAge: 30*24*3600*1000, httpOnly: true,});
+            return res.json(userData);
         }
          catch(e) {
-            console.log(e);
+             next(e);
         }
     }
 }
