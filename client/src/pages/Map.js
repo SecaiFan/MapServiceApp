@@ -1,11 +1,7 @@
-import React from 'react';
+import useScript from '../utils/useScript';
 
-const Map = () => {
-    return (
-        <div>
-
-        </div>
-    );
+const Map = (props) => {
+    useScript('../public/scripts/JS.js')
 };
 
 export default Map;
